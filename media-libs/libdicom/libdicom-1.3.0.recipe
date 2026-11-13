@@ -1,0 +1,80 @@
+SUMMARY="C library for reading DICOM files"
+DESCRIPTION="libdicom is a C library for reading DICOM files, the format of \
+medical imaging. It was written for digital pathology whole-slide images, \
+where it reads the large tiled images frame by frame, and it is what \
+OpenSlide uses to open DICOM slides.
+
+The package also has the dcm-dump and dcm-getframe command line tools."
+HOMEPAGE="https://github.com/ImagingDataCommons/libdicom"
+COPYRIGHT="2021-2025 Markus D. Herrmann, John Cupitt and others"
+LICENSE="MIT"
+REVISION="1"
+SOURCE_URI="https://github.com/ImagingDataCommons/libdicom/releases/download/v$portVersion/libdicom-$portVersion.tar.xz"
+CHECKSUM_SHA256="75f1167f5153c659cdd58f2b432d2592bf0477abe0087e195bc621b5594ef10a"
+
+ARCHITECTURES="all !x86_gcc2"
+SECONDARY_ARCHITECTURES="x86"
+
+commandSuffix=$secondaryArchSuffix
+commandBinDir=$binDir
+if [ "$targetArchitecture" = x86_gcc2 ]; then
+	commandSuffix=
+	commandBinDir=$prefix/bin
+fi
+
+libVersion="$portVersion"
+libVersionCompat="$libVersion compat >= ${libVersion%%.*}"
+
+PROVIDES="
+	libdicom$secondaryArchSuffix = $portVersion
+	cmd:dcm_dump$commandSuffix = $portVersion
+	cmd:dcm_getframe$commandSuffix = $portVersion
+	lib:libdicom$secondaryArchSuffix = $libVersionCompat
+	"
+REQUIRES="
+	haiku$secondaryArchSuffix
+	"
+
+PROVIDES_devel="
+	libdicom${secondaryArchSuffix}_devel = $portVersion
+	devel:libdicom$secondaryArchSuffix = $libVersionCompat
+	"
+REQUIRES_devel="
+	libdicom$secondaryArchSuffix == $portVersion base
+	"
+
+BUILD_REQUIRES="
+	haiku${secondaryArchSuffix}_devel
+	devel:uthash
+	"
+BUILD_PREREQUIRES="
+	cmd:gcc$secondaryArchSuffix
+	cmd:meson
+	cmd:ninja
+	cmd:pkg_config$secondaryArchSuffix
+	"
+
+BUILD()
+{
+	meson setup build \
+		--buildtype=release \
+		--prefix=$prefix \
+		--bindir=$commandBinDir \
+		--libdir=$libDir \
+		--includedir=$includeDir \
+		--mandir=$manDir \
+		--wrap-mode=nofallback \
+		-Dtests=false
+	ninja -C build
+}
+
+INSTALL()
+{
+	ninja -C build install
+
+	prepareInstalledDevelLib libdicom
+	fixPkgconfig
+
+	packageEntries devel \
+		$developDir
+}
